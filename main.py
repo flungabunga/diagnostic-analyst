@@ -463,10 +463,14 @@ HTML = """<!DOCTYPE html>
       }
 
       const data = await res.json();
+      if (!res.ok) {
+        typingBody.innerHTML = `<em style="color:#e05757">Error ${res.status}: ${data.detail || 'Unknown error'}</em>`;
+        return;
+      }
       typingBody.innerHTML = marked.parse(data.response);
       messagesEl.scrollTop = messagesEl.scrollHeight;
     } catch (err) {
-      typingBody.innerHTML = '<em style="color:#e05757">Something went wrong. Please try again.</em>';
+      typingBody.innerHTML = `<em style="color:#e05757">Error: ${err.message}</em>`;
     } finally {
       busy = false;
       sendBtn.disabled = !inputEl.value.trim();
@@ -516,13 +520,17 @@ async def chat(req: ChatRequest):
 
     sessions[req.session_id].append({"role": "user", "content": req.message})
 
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    response = client.messages.create(
-        model=MODEL,
-        max_tokens=2048,
-        system=SYSTEM_PROMPT,
-        messages=sessions[req.session_id],
-    )
+    try:
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        response = client.messages.create(
+            model=MODEL,
+            max_tokens=2048,
+            system=SYSTEM_PROMPT,
+            messages=sessions[req.session_id],
+        )
+    except Exception as e:
+        sessions[req.session_id].pop()  # remove the message we just added
+        raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {e}")
 
     reply = response.content[0].text
     sessions[req.session_id].append({"role": "assistant", "content": reply})
