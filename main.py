@@ -425,7 +425,7 @@ HTML = """<!DOCTYPE html>
     } else {
       body.innerHTML = role === 'agent'
         ? marked.parse(content)
-        : content.replace(/\n/g, '<br>');
+        : content.replace(/\\n/g, '<br>');
     }
 
     msgContent.appendChild(label);
